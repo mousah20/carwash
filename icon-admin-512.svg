@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="80" fill="#07090f"/>
+  <text x="256" y="195" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="130" fill="#f5c842">BARQ</text>
+  <text x="256" y="360" text-anchor="middle" font-family="Arial" font-size="160" fill="#f5c842">⚡</text>
+  <rect x="0" y="390" width="512" height="122" rx="0" fill="#9b7ff7" opacity="0.15"/>
+  <text x="256" y="465" text-anchor="middle" font-family="Arial" font-weight="700" font-size="48" fill="#9b7ff7">ADMIN</text>
+</svg>

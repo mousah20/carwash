@@ -1,0 +1,38 @@
+{
+  "name": "إدارة مغاسل — لوحة التحكم",
+  "short_name": "مغاسل Admin",
+  "description": "منصة إدارة خدمات الغسيل",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07090f",
+  "theme_color": "#07090f",
+  "orientation": "any",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "icon-admin-512.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-admin-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الحجوزات",
+      "url": "/?page=appointments",
+      "description": "عرض الحجوزات"
+    },
+    {
+      "name": "المواعيد",
+      "url": "/?page=slots",
+      "description": "إدارة المواعيد"
+    }
+  ]
+}

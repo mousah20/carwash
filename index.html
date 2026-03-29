@@ -1,0 +1,2210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدارة مغاسل — احجز خدمتك</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#07090f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="إدارة مغاسل">
+  <link rel="apple-touch-icon" href="icon-512.svg">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="احجز خدمة غسيل سيارتك — خدمة متنقلة">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy:#0a0f2e;
+  --navy2:#111633;
+  --navy3:#1a1f3a;
+  --yellow:#f5c842;
+  --yellow2:#e6b800;
+  --yellow-glow:rgba(245,200,66,0.15);
+  --text:#f0f4ff;
+  --muted:#7b82aa;
+  --muted2:#3a4068;
+  --border:rgba(245,200,66,0.12);
+  --border2:rgba(245,200,66,0.25);
+  --red:#ff5c5c;
+  --green:#25d366;
+  --card:rgba(255,255,255,0.03);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Cairo',sans-serif;background:var(--navy);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ═══ BG ═══ */
+.bg-pattern{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(245,200,66,0.08) 0%,transparent 60%),
+  radial-gradient(ellipse 40% 40% at 90% 90%,rgba(245,200,66,0.05) 0%,transparent 60%);}
+.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(245,200,66,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(245,200,66,0.03) 1px,transparent 1px);
+  background-size:40px 40px;}
+
+/* ═══ HEADER ═══ */
+header{position:relative;z-index:10;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:44px;height:44px;background:var(--yellow);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 20px rgba(245,200,66,0.4);}
+.logo-text{font-size:20px;font-weight:900;letter-spacing:2px;color:var(--yellow);}
+.logo-sub{font-size:11px;color:var(--muted);font-weight:400;margin-top:1px;}
+.header-badge{background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.3);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--green);font-weight:700;display:flex;align-items:center;gap:6px;}
+.header-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.header-back{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:7px 14px;font-family:"Cairo",sans-serif;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;display:none;align-items:center;gap:6px;transition:all .2s;}
+.header-back:hover{border-color:var(--yellow);color:var(--yellow);}
+.header-back.visible{display:flex;}
+
+/* ═══ STEPS ═══ */
+.steps-wrap{position:relative;z-index:10;padding:24px 24px 0;max-width:680px;margin:0 auto;}
+.steps{display:flex;align-items:center;gap:0;margin-bottom:32px;}
+.step{display:flex;align-items:center;gap:8px;flex:1;}
+.step-num{width:32px;height:32px;border-radius:50%;border:2px solid var(--muted2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);transition:all .3s;flex-shrink:0;}
+.step.active .step-num{border-color:var(--yellow);background:var(--yellow);color:var(--navy);box-shadow:0 0 16px rgba(245,200,66,0.4);}
+.step.done .step-num{border-color:var(--green);background:var(--green);color:#fff;}
+.step.done .step-num::after{content:'✓';}
+.step-label{font-size:11px;color:var(--muted);font-weight:600;transition:color .3s;}
+.step.active .step-label{color:var(--yellow);}
+.step.done .step-label{color:var(--green);}
+.step-line{flex:1;height:2px;background:var(--muted2);margin:0 8px;border-radius:2px;transition:background .3s;}
+.step-line.done{background:var(--green);}
+
+/* ═══ MAIN ═══ */
+.main{position:relative;z-index:10;max-width:680px;margin:0 auto;padding:0 24px 60px;}
+
+/* ═══ PAGES ═══ */
+.page{display:none;animation:fadeIn .35s ease both;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══ SECTION TITLE ═══ */
+.sec-title{font-size:22px;font-weight:900;margin-bottom:6px;}
+.sec-sub{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.7;}
+.sec-title span{color:var(--yellow);}
+
+/* ═══ SERVICE TABS ═══ */
+.service-tabs{display:flex;gap:10px;margin-bottom:28px;}
+.service-tab{flex:1;padding:14px;border-radius:14px;border:2px solid var(--border);background:var(--card);text-align:center;cursor:pointer;transition:all .2s;font-family:'Cairo',sans-serif;}
+.service-tab:hover{border-color:var(--border2);}
+.service-tab.active{border-color:var(--yellow);background:var(--yellow-glow);}
+.service-tab .tab-icon{font-size:28px;margin-bottom:6px;}
+.service-tab .tab-name{font-size:13px;font-weight:700;color:var(--text);}
+.service-tab .tab-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ═══ PACKAGES ═══ */
+.packages{display:flex;flex-direction:column;gap:12px;margin-bottom:24px;}
+.pkg-card{border:2px solid var(--border);border-radius:16px;padding:18px 20px;cursor:pointer;transition:all .2s;background:var(--card);position:relative;overflow:hidden;}
+.pkg-card::before{content:'';position:absolute;top:0;right:0;width:4px;height:100%;background:var(--muted2);transition:background .2s;}
+.pkg-card:hover{border-color:var(--border2);}
+.pkg-card.selected{border-color:var(--yellow);background:var(--yellow-glow);}
+.pkg-card.selected::before{background:var(--yellow);}
+.pkg-card.gold{}.pkg-card.gold::before{background:linear-gradient(180deg,#f5c842,#e6b800);}
+.pkg-card.silver::before{background:linear-gradient(180deg,#9b59ff,#5c2bff);}
+.pkg-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.pkg-name{font-size:16px;font-weight:800;}
+.pkg-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge-basic{background:rgba(79,142,247,0.15);color:#4f8ef7;}
+.badge-gold{background:rgba(245,200,66,0.15);color:var(--yellow);}
+.badge-silver{background:rgba(155,89,255,0.15);color:#9b59ff;}
+.pkg-features{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.pkg-feat{font-size:11px;color:var(--muted);background:rgba(255,255,255,0.04);padding:3px 10px;border-radius:6px;border:1px solid var(--border);}
+.pkg-prices{display:flex;gap:10px;}
+.price-pill{flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 12px;text-align:center;border:1px solid var(--border);}
+.price-size{font-size:10px;color:var(--muted);margin-bottom:2px;}
+.price-val{font-size:16px;font-weight:900;color:var(--yellow);}
+.price-unit{font-size:10px;color:var(--muted);}
+.pkg-selected-icon{position:absolute;top:14px;left:14px;width:22px;height:22px;border-radius:50%;background:var(--yellow);display:none;align-items:center;justify-content:center;font-size:12px;color:var(--navy);}
+.pkg-card.selected .pkg-selected-icon{display:flex;}
+
+/* ═══ SIZE SELECTOR ═══ */
+.size-wrap{margin-bottom:24px;}
+.size-label{font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text);}
+.sizes{display:flex;gap:10px;}
+.size-btn{flex:1;padding:12px;border-radius:12px;border:2px solid var(--border);background:var(--card);text-align:center;cursor:pointer;transition:all .2s;font-family:'Cairo',sans-serif;}
+.size-btn:hover{border-color:var(--border2);}
+.size-btn.active{border-color:var(--yellow);background:var(--yellow-glow);}
+.size-btn .s-icon{font-size:20px;margin-bottom:4px;}
+.size-btn .s-name{font-size:12px;font-weight:700;}
+.size-btn .s-price{font-size:14px;font-weight:900;color:var(--yellow);margin-top:2px;}
+
+/* ═══ INPUTS ═══ */
+.form-group{margin-bottom:18px;}
+.form-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:7px;letter-spacing:.5px;display:flex;align-items:center;gap:6px;}
+.form-input{width:100%;background:rgba(255,255,255,0.04);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;font-family:'Cairo',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color .2s;}
+.form-input:focus{border-color:var(--yellow);}
+.form-input::placeholder{color:var(--muted2);}
+.input-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* ═══ MAP ═══ */
+.map-wrap{margin-bottom:18px;}
+.map-actions{display:flex;gap:10px;margin-bottom:10px;}
+.map-btn{flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.map-btn:hover{border-color:var(--yellow);color:var(--yellow);}
+.map-btn.active{border-color:var(--yellow);background:var(--yellow-glow);color:var(--yellow);}
+#map{width:100%;height:260px;border-radius:14px;border:1.5px solid var(--border);overflow:hidden;}
+.map-address{margin-top:10px;padding:10px 14px;background:rgba(245,200,66,0.07);border:1px solid var(--border2);border-radius:10px;font-size:12px;color:var(--muted);min-height:38px;line-height:1.6;}
+.map-address strong{color:var(--yellow);}
+
+/* ═══ DATE TIME ═══ */
+.datetime-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;}
+.time-slots{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.time-slot{padding:7px 16px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-family:'Cairo',sans-serif;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .2s;}
+.time-slot:hover{border-color:var(--border2);color:var(--text);}
+.time-slot.active{border-color:var(--yellow);background:var(--yellow-glow);color:var(--yellow);}
+.time-slot.taken{opacity:.3;pointer-events:none;text-decoration:line-through;}
+
+/* ═══ SUMMARY ═══ */
+.summary-card{background:var(--navy2);border:1.5px solid var(--border2);border-radius:18px;padding:22px;margin-bottom:20px;}
+.summary-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.summary-row:last-child{border-bottom:none;padding-top:14px;margin-top:4px;}
+.summary-row .lbl{color:var(--muted);}
+.summary-row .val{font-weight:700;color:var(--text);}
+.summary-row.total .lbl{font-size:15px;font-weight:700;color:var(--text);}
+.summary-row.total .val{font-size:20px;font-weight:900;color:var(--yellow);}
+.summary-icon{width:36px;height:36px;border-radius:10px;background:var(--yellow-glow);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px;}
+
+/* ═══ BUTTONS ═══ */
+.btn-next{width:100%;background:var(--yellow);border:none;border-radius:14px;padding:16px;font-family:'Cairo',sans-serif;font-size:16px;font-weight:800;color:var(--navy);cursor:pointer;transition:all .2s;box-shadow:0 4px 24px rgba(245,200,66,0.3);display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-next:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(245,200,66,0.4);}
+.btn-next:active{transform:scale(.98);}
+.btn-back{width:100%;background:transparent;border:1.5px solid var(--border);border-radius:14px;padding:13px;font-family:'Cairo',sans-serif;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .2s;margin-top:10px;}
+.btn-back:hover{border-color:var(--border2);color:var(--text);}
+.btn-row{display:flex;gap:12px;flex-direction:column;}
+
+/* ═══ SUCCESS ═══ */
+.success-wrap{text-align:center;padding:40px 20px;}
+
+/* ═══ HOME PAGE ═══ */
+.home-wrap{padding:40px 0 20px;}
+.home-logo{text-align:center;margin-bottom:36px;}
+.home-logo .h-icon{width:72px;height:72px;background:var(--yellow);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 14px;box-shadow:0 6px 30px rgba(245,200,66,0.4);}
+.home-logo h1{font-size:28px;font-weight:900;letter-spacing:3px;color:var(--yellow);}
+.home-logo p{font-size:13px;color:var(--muted);margin-top:4px;}
+.home-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+.home-card{
+  appearance:none;-webkit-appearance:none;
+  border-radius:18px;padding:28px 20px;text-align:center;
+  cursor:pointer;transition:all .25s;
+  background:rgba(255,255,255,0.03);
+  color:var(--text);
+  font-family:'Cairo',sans-serif;
+  width:100%;display:block;
+  border-top:4px solid transparent;
+  border-left:2px solid rgba(245,200,66,0.12);
+  border-right:2px solid rgba(245,200,66,0.12);
+  border-bottom:2px solid rgba(245,200,66,0.12);
+}
+.home-card:hover{transform:translateY(-4px);}
+.home-card.book{border-top-color:var(--yellow);}
+.home-card.book:hover{background:rgba(245,200,66,0.08);border-color:var(--yellow);}
+.home-card.edit{border-top-color:var(--blue);}
+.home-card.edit:hover{background:rgba(79,142,247,0.08);border-color:var(--blue);}
+.home-card .hc-icon{font-size:42px;margin-bottom:14px;display:block;}
+.home-card .hc-title{font-size:17px;font-weight:800;margin-bottom:6px;display:block;}
+.home-card.book .hc-title{color:var(--yellow);}
+.home-card.edit .hc-title{color:var(--blue);}
+.home-card .hc-sub{font-size:12px;color:var(--muted);line-height:1.7;display:block;}
+
+/* ═══ EDIT PAGE ═══ */
+.edit-wrap{padding:10px 0;}
+.edit-search{margin-bottom:20px;}
+.edit-result{background:var(--navy2);border:1.5px solid var(--border2);border-radius:16px;padding:20px;margin-bottom:20px;display:none;}
+.edit-result-title{font-size:14px;font-weight:800;margin-bottom:14px;color:var(--yellow);}
+.edit-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.edit-row:last-child{border-bottom:none;}
+.edit-row .el{color:var(--muted);}
+.edit-row .ev{font-weight:700;}
+.edit-slots-title{font-size:13px;font-weight:700;margin:18px 0 12px;color:var(--text);}
+.success-icon{width:90px;height:90px;border-radius:50%;background:rgba(37,211,102,0.12);border:3px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto 24px;box-shadow:0 0 40px rgba(37,211,102,0.2);animation:popIn .5s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes popIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+.success-title{font-size:26px;font-weight:900;margin-bottom:8px;}
+.success-sub{font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:28px;}
+.booking-id{background:var(--navy2);border:1.5px solid var(--border2);border-radius:14px;padding:18px;margin-bottom:24px;text-align:center;}
+.booking-id-label{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;}
+.booking-id-val{font-size:28px;font-weight:900;color:var(--yellow);letter-spacing:3px;}
+.booking-id-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.edit-link{display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,0.1);border:1px solid var(--border2);border-radius:10px;padding:10px 20px;font-size:13px;color:var(--yellow);font-weight:700;margin-bottom:16px;cursor:pointer;}
+
+/* ═══ NOTICE ═══ */
+.notice{background:rgba(245,200,66,0.06);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:16px;}
+.notice strong{color:var(--yellow);}
+
+/* ═══ PRICE DISPLAY ═══ */
+.price-display{background:var(--yellow-glow);border:1.5px solid var(--border2);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.price-display .pd-label{font-size:13px;color:var(--muted);}
+.price-display .pd-val{font-size:22px;font-weight:900;color:var(--yellow);}
+.price-display .pd-unit{font-size:12px;color:var(--muted);}
+
+/* ═══ QTY INPUT ═══ */
+.qty-row{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+.qty-label{flex:1;font-size:13px;color:var(--text);font-weight:600;}
+.qty-ctrl{display:flex;align-items:center;gap:10px;}
+.qty-btn{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:'Cairo',sans-serif;}
+.qty-btn:hover{border-color:var(--yellow);background:var(--yellow-glow);color:var(--yellow);}
+.qty-val{font-size:18px;font-weight:900;color:var(--yellow);min-width:28px;text-align:center;}
+
+/* ═══ DISCOUNT BADGE ═══ */
+.discount-note{background:rgba(37,211,102,0.08);border:1px solid rgba(37,211,102,0.2);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--green);margin-bottom:16px;display:none;}
+
+/* ═══ CALENDAR ═══ */
+.cal-wrap{background:var(--navy2);border:1.5px solid var(--border);border-radius:18px;padding:20px;margin-bottom:20px;}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cal-month-label{font-size:16px;font-weight:800;color:var(--yellow);}
+.cal-nav{background:var(--card);border:1.5px solid var(--border);border-radius:9px;width:34px;height:34px;color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:"Cairo",sans-serif;}
+.cal-nav:hover{border-color:var(--yellow);color:var(--yellow);}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px;}
+.cal-weekdays span{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px 0;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.cal-day{aspect-ratio:1;border-radius:10px;border:1.5px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-family:"Cairo",sans-serif;position:relative;}
+.cal-day .day-num{font-size:13px;font-weight:700;}
+.cal-day .day-slots{font-size:9px;margin-top:2px;font-weight:600;}
+.cal-day.empty{pointer-events:none;}
+.cal-day.past{opacity:.3;pointer-events:none;color:var(--muted);}
+.cal-day.has-slots{border-color:rgba(37,211,102,0.3);background:rgba(37,211,102,0.06);}
+.cal-day.has-slots .day-num{color:var(--text);}
+.cal-day.has-slots .day-slots{color:var(--green);}
+.cal-day.has-slots:hover{border-color:var(--green);background:rgba(37,211,102,0.15);transform:scale(1.05);}
+.cal-day.full{border-color:rgba(255,92,92,0.2);background:rgba(255,92,92,0.05);pointer-events:none;}
+.cal-day.full .day-num{color:var(--muted);}
+.cal-day.full .day-slots{color:var(--red);}
+.cal-day.selected{border-color:var(--yellow)!important;background:var(--yellow-glow)!important;}
+.cal-day.selected .day-num{color:var(--yellow);}
+.cal-day.today-marker .day-num{background:var(--yellow);color:var(--navy);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+.cal-legend{display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.leg-dot{width:8px;height:8px;border-radius:50%;}
+.leg-dot.avail{background:var(--green);}
+.leg-dot.full{background:var(--red);}
+.leg-dot.past{background:var(--muted2);}
+.slots-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.slots-date-label{font-size:14px;font-weight:800;color:var(--text);}
+.slots-loading{font-size:12px;color:var(--muted);}
+.slots-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.slot-item{border:1.5px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .2s;background:var(--card);}
+.slot-item:hover{border-color:var(--yellow);background:var(--yellow-glow);}
+.slot-item.selected{border-color:var(--yellow);background:var(--yellow-glow);}
+.slot-item.taken{opacity:.4;pointer-events:none;border-color:rgba(255,92,92,0.2);background:rgba(255,92,92,0.04);}
+.slot-time{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.slot-avail{font-size:10px;color:var(--green);font-weight:600;}
+.slot-item.taken .slot-time{color:var(--muted);}
+.slot-item.taken .slot-avail{color:var(--red);}
+.slot-item.selected .slot-time{color:var(--yellow);}
+.slot-item.selected .slot-avail{color:var(--yellow);}
+.slots-empty{text-align:center;padding:30px;color:var(--muted);font-size:13px;}
+.selected-slot{background:rgba(245,200,66,0.08);border:1.5px solid var(--border2);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+.ss-icon{font-size:24px;}
+.ss-label{font-size:11px;color:var(--muted);margin-bottom:3px;}
+.ss-val{font-size:15px;font-weight:800;color:var(--yellow);}
+
+@media(max-width:480px){
+  .input-row,.datetime-grid{grid-template-columns:1fr;}
+  .sizes{flex-wrap:wrap;}
+  .size-btn{min-width:calc(50% - 5px);}
+  .slots-grid{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+<div class="bg-pattern"></div>
+<div class="bg-grid"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text biz-name">إدارة مغاسل</div>
+      <div class="logo-sub">خدمة غسيل متميزة</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button class="header-back" id="headerBack" onclick="headerGoBackFixed()">&#8594; رجوع</button>
+    <div class="header-badge">متاح الآن</div>
+  </div>
+</header>
+
+<div class="steps-wrap" id="stepsWrap" style="display:none;">
+  <div class="steps">
+    <div class="step active" id="s1">
+      <div class="step-num">1</div>
+      <div class="step-label">الخدمة</div>
+    </div>
+    <div class="step-line" id="l1"></div>
+    <div class="step" id="s2">
+      <div class="step-num">2</div>
+      <div class="step-label">الموعد</div>
+    </div>
+    <div class="step-line" id="l2"></div>
+    <div class="step" id="s3">
+      <div class="step-num">3</div>
+      <div class="step-label">بياناتك</div>
+    </div>
+    <div class="step-line" id="l3"></div>
+    <div class="step" id="s4">
+      <div class="step-num">4</div>
+      <div class="step-label">تأكيد</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ═══ PAGE 0: الرئيسية ═══ -->
+  <div class="page active" id="page0">
+    <div class="home-wrap">
+      <div class="home-logo">
+        <div class="h-icon">⚡</div>
+        <h1 class="biz-name">إدارة مغاسل</h1>
+        <p>خدمة غسيل سيارات متنقلة</p>
+      </div>
+      <div class="home-cards">
+        <div class="home-card book" id="btnBook">
+          <span class="hc-icon">📅</span>
+          <span class="hc-title">حجز موعد</span>
+          <span class="hc-sub">احجز خدمة غسيل سيارات في أي وقت يناسبك</span>
+        </div>
+        <div class="home-card edit" id="btnEdit">
+          <span class="hc-icon">📋</span>
+          <span class="hc-title">مواعيدي</span>
+          <span class="hc-sub">اعرض وعدّل مواعيدك برقم جوالك</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE EDIT: مواعيدي ═══ -->
+  <div class="page" id="page-edit">
+    <div class="edit-wrap">
+
+      <!-- المرحلة 1: البحث برقم الجوال -->
+      <div id="editStep1">
+        <div class="sec-title">📋 <span>مواعيدي</span></div>
+        <div class="sec-sub">أدخل رقم جوالك لعرض جميع مواعيدك</div>
+        <div class="edit-search">
+          <div class="form-label">📱 رقم الجوال</div>
+          <div style="display:flex;gap:10px;">
+            <input class="form-input" id="editPhone" placeholder="05XXXXXXXX" type="tel" maxlength="10" style="flex:1"
+              onkeydown="if(event.key==='Enter') searchBooking()">
+            <button class="btn-next" style="width:auto;padding:0 20px;" onclick="searchBooking()">🔍 عرض</button>
+          </div>
+          <div id="editError" style="color:var(--red);font-size:12px;margin-top:8px;display:none;">❌ لم يتم العثور على مواعيد بهذا الرقم</div>
+        </div>
+
+        <!-- قائمة الحجوزات -->
+        <div id="bookingsList" style="display:none;margin-top:20px;"></div>
+
+        <button class="btn-back" onclick="goHome()" style="margin-top:10px;">→ رجوع للرئيسية</button>
+      </div>
+
+      <!-- المرحلة 1.5: تعديل الموقع -->
+      <div id="editStepLocation" style="display:none;">
+        <div class="sec-title" style="margin-bottom:4px;">📍 <span>تعديل الموقع</span></div>
+        <div class="sec-sub">حرك الدبوس لتحديد موقعك الجديد</div>
+        <div style="margin:12px 0;">
+          <button class="map-btn" onclick="if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{window._editLocMap.setView([p.coords.latitude,p.coords.longitude],15);window._editLocMarker.setLatLng([p.coords.latitude,p.coords.longitude]);window._editLocLat=p.coords.latitude;window._editLocLng=p.coords.longitude;});}">📡 تحديد تلقائي</button>
+        </div>
+        <div id="editLocMap" style="height:280px;border-radius:12px;overflow:hidden;margin-bottom:16px;"></div>
+        <button class="btn-next" onclick="saveEditLocation()">✅ حفظ الموقع الجديد</button>
+        <button class="btn-back" onclick="backToBookingsList()" style="margin-top:8px;">→ رجوع</button>
+      </div>
+
+      <!-- المرحلة 2: عرض الحجز واختيار التاريخ الجديد -->
+      <div id="editStep2" style="display:none;">
+        <div class="sec-title" style="margin-bottom:4px;">اختر <span>موعداً جديداً</span></div>
+
+        <!-- ملخص الحجز الحالي -->
+        <div class="edit-result" id="editResult" style="display:block;margin-bottom:20px;">
+          <div class="edit-result-title">📋 حجزك الحالي</div>
+          <div id="editResultRows"></div>
+        </div>
+
+        <!-- تحذير الساعة -->
+        <div class="notice" style="margin-bottom:16px;">
+          <strong>⏰ تنبيه:</strong> يمكن التعديل قبل الموعد حسب سياسة الشركة
+        </div>
+
+        <!-- التقويم -->
+        <div class="cal-wrap">
+          <div class="cal-header">
+            <button class="cal-nav" onclick="changeEditMonth(-1)">&#8592;</button>
+            <div class="cal-month-label" id="editCalMonthLabel"></div>
+            <button class="cal-nav" onclick="changeEditMonth(1)">&#8594;</button>
+          </div>
+          <div class="cal-weekdays">
+            <span>أحد</span><span>إثن</span><span>ثلا</span><span>أرب</span><span>خمس</span><span>جمع</span><span>سبت</span>
+          </div>
+          <div class="cal-grid" id="editCalGrid"></div>
+          <div class="cal-legend">
+            <span class="leg-item"><span class="leg-dot avail"></span>متاح</span>
+            <span class="leg-item"><span class="leg-dot full"></span>ممتلئ</span>
+            <span class="leg-item"><span class="leg-dot past"></span>منتهي</span>
+          </div>
+        </div>
+
+        <!-- الأوقات المتاحة -->
+        <div id="editSlotsWrap" style="display:none;">
+          <div class="slots-header">
+            <div class="slots-date-label" id="editSlotsDateLabel"></div>
+          </div>
+          <div class="slots-grid" id="editSlotsGrid"></div>
+          <div class="slots-empty" id="editSlotsEmpty" style="display:none;">
+            <div style="font-size:32px;margin-bottom:8px;">😔</div>
+            <div>لا توجد أوقات متاحة في هذا اليوم</div>
+          </div>
+        </div>
+
+        <!-- الموعد الجديد المختار -->
+        <div id="editSelectedSlot" style="display:none;" class="selected-slot">
+          <div class="ss-icon">✅</div>
+          <div><div class="ss-label">الموعد الجديد</div><div class="ss-val" id="editSlotVal">—</div></div>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn-next" onclick="confirmEdit()">✅ تأكيد التعديل</button>
+          <button class="btn-back" onclick="backToEditSearch()">→ رجوع</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ PAGE 1: الخدمة ═══ -->
+  <div class="page" id="page1">
+    <div class="sec-title">اختر <span>باقتك</span></div>
+    <div class="sec-sub">اختر الباقة المناسبة لغسيل سيارتك</div>
+
+    <!-- غسيل سيارات -->
+    <div id="car-section">
+      <div class="sec-sub" style="margin-bottom:16px;margin-top:-8px;">اختر الباقة المناسبة</div>
+      <div class="packages">
+        <div class="pkg-card" onclick="selectPkg('basic',this)">
+          <div class="pkg-selected-icon">✓</div>
+          <div class="pkg-top">
+            <div class="pkg-name">🔵 الباقة الأساسية</div>
+            <div class="pkg-badge badge-basic">Basic Wash</div>
+          </div>
+          <div class="pkg-features">
+            <span class="pkg-feat">غسيل خارجي</span>
+            <span class="pkg-feat">واكس خارجي</span>
+            <span class="pkg-feat">تلميع كفرات</span>
+            <span class="pkg-feat">تكنيس داخلي</span>
+            <span class="pkg-feat">معطر</span>
+          </div>
+          <div class="pkg-prices">
+            <div class="price-pill"><div class="price-size">صغير</div><div class="price-val">50</div><div class="price-unit">ريال</div></div>
+            <div class="price-pill"><div class="price-size">وسط</div><div class="price-val">55</div><div class="price-unit">ريال</div></div>
+            <div class="price-pill"><div class="price-size">كبير</div><div class="price-val">65</div><div class="price-unit">ريال</div></div>
+          </div>
+        </div>
+        <div class="pkg-card gold" onclick="selectPkg('gold',this)">
+          <div class="pkg-selected-icon">✓</div>
+          <div class="pkg-top">
+            <div class="pkg-name">� الباقة الفضية</div>
+            <div class="pkg-badge badge-gold">Special Detail</div>
+          </div>
+          <div class="pkg-features">
+            <span class="pkg-feat">غسيل أسفل السيارة</span>
+            <span class="pkg-feat">تنظيف مراتب بخار</span>
+            <span class="pkg-feat">تلميع ديكورات</span>
+            <span class="pkg-feat">تغليف دوسات</span>
+            <span class="pkg-feat">معطر</span>
+          </div>
+          <div class="pkg-prices">
+            <div class="price-pill"><div class="price-size">صغير</div><div class="price-val">160</div><div class="price-unit">ريال</div></div>
+            <div class="price-pill"><div class="price-size">وسط</div><div class="price-val">180</div><div class="price-unit">ريال</div></div>
+            <div class="price-pill"><div class="price-size">كبير</div><div class="price-val">190</div><div class="price-unit">ريال</div></div>
+          </div>
+        </div>
+        <div class="pkg-card silver" onclick="selectPkg('silver',this)">
+          <div class="pkg-selected-icon">✓</div>
+          <div class="pkg-top">
+            <div class="pkg-name">🥇 الباقة الذهبية</div>
+            <div class="pkg-badge badge-silver">Premium</div>
+          </div>
+          <div class="pkg-features">
+            <span class="pkg-feat">تنظيف قماش سقف</span>
+            <span class="pkg-feat">تلميع أنوار</span>
+            <span class="pkg-feat">تفجير عطر وكالة</span>
+            <span class="pkg-feat">تنظيف محرك</span>
+            <span class="pkg-feat">حماية ضد الماء</span>
+            <span class="pkg-feat">إزالة بقع الجنوط</span>
+          </div>
+          <div class="pkg-prices">
+            <div class="price-pill"><div class="price-size">صغير</div><div class="price-val">410</div><div class="price-unit">ريال</div></div>
+            <div class="price-pill"><div class="price-size">وسط</div><div class="price-val">430</div><div class="price-unit">ريال</div></div>
+            <div class="price-pill"><div class="price-size">كبير</div><div class="price-val">450</div><div class="price-unit">ريال</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="size-wrap" id="size-section" style="display:none;">
+        <div class="size-label">اختر حجم السيارة</div>
+        <div class="sizes">
+          <div class="size-btn" onclick="selectSize('small',this)">
+            <div class="s-icon">🚗</div>
+            <div class="s-name">صغير</div>
+            <div class="s-price" id="sp-small">—</div>
+          </div>
+          <div class="size-btn" onclick="selectSize('medium',this)">
+            <div class="s-icon">🚙</div>
+            <div class="s-name">وسط</div>
+            <div class="s-price" id="sp-medium">—</div>
+          </div>
+          <div class="size-btn" onclick="selectSize('large',this)">
+            <div class="s-icon">🚐</div>
+            <div class="s-name">كبير</div>
+            <div class="s-price" id="sp-large">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" id="car-brand-section" style="display:none;">
+        <div class="form-label">🚗 ماركة السيارة <span style="color:var(--red)">*</span></div>
+        <input class="form-input" id="carBrand" placeholder="مثال: تويوتا، BMW، فورد..." required>
+      </div>
+
+      <div class="form-group" id="car-type-section" style="display:none;">
+        <div class="form-label">نوع السيارة <span style="color:var(--red)">*</span></div>
+        <input class="form-input" id="carType" placeholder="مثال: كامري، باترول، لاند كروزر..." required>
+      </div>
+
+      <div class="form-group" id="car-count-section" style="display:none;">
+        <div class="form-label">🔢 عدد السيارات</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button type="button" onclick="changeCarCount(-1)" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);color:var(--text);font-size:18px;cursor:pointer;font-family:Cairo;">−</button>
+          <span id="carCountDisplay" style="font-size:20px;font-weight:800;color:var(--accent);min-width:30px;text-align:center;">1</span>
+          <button type="button" onclick="changeCarCount(1)" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);color:var(--text);font-size:18px;cursor:pointer;font-family:Cairo;">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- إضافات الباقة -->
+    <div id="pkg-addons" style="display:none;margin-top:16px;">
+      <div class="sec-sub" style="margin-bottom:12px;">🔧 إضافات اختيارية (اختر ما تريد)</div>
+      <div id="addons-list" style="display:grid;gap:8px;"></div>
+      <div id="addons-total" style="display:none;background:var(--bg2);border-radius:10px;padding:12px;margin-top:12px;font-size:12px;">
+        <div id="addons-breakdown"></div>
+        <div style="margin-top:6px;font-weight:700;color:var(--yellow);" id="addons-sum"></div>
+      </div>
+    </div>
+
+    <!-- تنبيه الغسيل الخارجي -->
+    <div id="exterior-notice" style="display:none;background:rgba(245,200,66,0.1);border:1px solid var(--yellow);border-radius:10px;padding:12px;margin-top:12px;font-size:13px;color:var(--yellow);">
+      ⚠️ <strong>الغسيل الخارجي</strong> — الحد الأدنى للحجز سيارتان
+    </div>
+
+    <div class="price-display" id="car-price-display" style="display:none;">
+      <div>
+        <div class="pd-label">السعر المختار</div>
+        <div class="pd-unit" id="price-detail-note"></div>
+      </div>
+      <div class="pd-val" id="selected-price-text">— ريال</div>
+    </div>
+
+    <button class="btn-next" onclick="goTo(2)">التالي — اختر الموعد ←</button>
+  </div>
+
+  <!-- ═══ PAGE 2: الموعد ═══ -->
+  <div class="page" id="page2">
+    <div class="sec-title">اختر <span>الموعد</span></div>
+    <div class="sec-sub">اختر اليوم المناسب ثم الوقت المتاح</div>
+
+    <div class="cal-wrap">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">&#8592;</button>
+        <div class="cal-month-label" id="calMonthLabel"></div>
+        <button class="cal-nav" onclick="changeMonth(1)">&#8594;</button>
+      </div>
+      <div class="cal-weekdays">
+        <span>أحد</span><span>إثن</span><span>ثلا</span><span>أرب</span><span>خمس</span><span>جمع</span><span>سبت</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span class="leg-item"><span class="leg-dot avail"></span>متاح</span>
+        <span class="leg-item"><span class="leg-dot full"></span>ممتلئ</span>
+        <span class="leg-item"><span class="leg-dot past"></span>منتهي</span>
+      </div>
+    </div>
+
+    <div id="slots-wrap" style="display:none;">
+      <div class="slots-header">
+        <div class="slots-date-label" id="slotsDateLabel"></div>
+        <div class="slots-loading" id="slotsLoading" style="display:none;">⏳ جاري التحميل...</div>
+      </div>
+      <div class="slots-grid" id="slotsGrid"></div>
+      <div class="slots-empty" id="slotsEmpty" style="display:none;">
+        <div style="font-size:32px;margin-bottom:8px;">😔</div>
+        <div>لا توجد أوقات متاحة في هذا اليوم</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">اختر يوماً آخر</div>
+      </div>
+    </div>
+
+    <div class="selected-slot" id="selectedSlotDisplay" style="display:none;">
+      <div class="ss-icon">✅</div>
+      <div>
+        <div class="ss-label">الموعد المختار</div>
+        <div class="ss-val" id="ssVal">—</div>
+      </div>
+    </div>
+
+    <div class="notice">
+      <strong>📝 ملاحظة:</strong> يمكنك تعديل الموعد قبله بساعة — <strong>لا يوجد إلغاء إلكتروني</strong>، للإلغاء تواصل معنا على الواتساب
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-next" onclick="goTo(3)">التالي — بياناتك ←</button>
+      <button class="btn-back" onclick="goTo(1)">→ رجوع</button>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE 3: البيانات ═══ -->
+  <div class="page" id="page3">
+    <div class="sec-title">بيانات <span>التواصل</span></div>
+    <div class="sec-sub">أدخل معلوماتك لإتمام الحجز — رقم الجوال هو رقم حجزك</div>
+
+    <div class="form-group">
+      <div class="form-label">👤 الاسم الكريم</div>
+      <input class="form-input" id="clientName" placeholder="محمد الأحمدي">
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">📱 رقم الجوال (رقم الحجز)</div>
+      <input class="form-input" id="clientPhone" placeholder="05XXXXXXXX" type="tel" maxlength="10">
+    </div>
+
+    <div class="map-wrap">
+      <div class="form-label">📍 موقعك</div>
+      <div class="map-actions">
+        <button class="map-btn" onclick="autoLocate()">📡 تحديد تلقائي</button>
+        <button class="map-btn" onclick="enableManualPin()">🗺️ حدد يدوياً</button>
+      </div>
+      <div id="map"></div>
+      <div class="map-address" id="map-address">اضغط "تحديد تلقائي" أو حرك الدبوس على الخريطة</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-next" onclick="goTo(4)">التالي — مراجعة الحجز ←</button>
+      <button class="btn-back" onclick="goTo(2)">→ رجوع</button>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE 4: التأكيد ═══ -->
+  <div class="page" id="page4">
+    <div class="sec-title">مراجعة <span>الحجز</span></div>
+    <div class="sec-sub">تأكد من صحة المعلومات قبل الإرسال</div>
+
+    <div class="summary-card" id="summaryCard"></div>
+
+
+
+    <div class="btn-row">
+      <button class="btn-next" onclick="confirmBooking()">✅ تأكيد الحجز</button>
+      <button class="btn-back" onclick="goTo(3)">→ رجوع</button>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE 5: نجاح ═══ -->
+  <div class="page" id="page5">
+    <div class="success-wrap">
+      <div class="success-icon">✓</div>
+      <div class="success-title">تم الحجز بنجاح! ⚡</div>
+      <div class="success-sub">شكراً لك! تم استلام حجزك وسيتواصل معك فريقنا قريباً للتأكيد</div>
+
+      <div class="booking-id">
+        <div class="booking-id-label">رقم حجزك</div>
+        <div class="booking-id-val" id="bookingIdDisplay">—</div>
+      </div>
+
+      <div class="notice">
+        <strong>📞 للإلغاء:</strong> تواصل معنا على واتساب <strong class="biz-phone">0541678210</strong>
+      </div>
+
+      <button class="btn-next" style="margin-top:10px;" onclick="goHome()">🏠 العودة للرئيسية</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+<script>
+// ══════════ SUPABASE ══════════
+// قراءة إعدادات Supabase من config.js (نفس admin.html)
+if(typeof APP_CONFIG === 'undefined') {
+  console.error('❌ config.js غير موجود — يرجى رفعه على Netlify');
+}
+const SUPABASE_URL = (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.SUPABASE_URL : '';
+const SUPABASE_KEY = (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.SUPABASE_KEY : '';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════ SETTINGS ══════════
+let sysSettings = { min_booking_hours: 2, cancel_hours: 1 };
+
+// إعدادات الواتساب
+let waConfig = {};
+
+async function loadSettings() {
+  try {
+    const { data } = await db.from('settings').select('*');
+    if(data) data.forEach(r => {
+      sysSettings[r.key] = r.value;
+      // WA config
+      if(['wa_key','wa_provider','wa_phone','wa_instance','wa_api_url','business_name'].includes(r.key)) {
+        waConfig[r.key] = r.value;
+      }
+      // الباقات والأسعار من Supabase
+      if(r.key === 'packages') {
+        try {
+          const pkgs = JSON.parse(r.value);
+          if(Array.isArray(pkgs)) {
+            pkgs.forEach(pkg => {
+              if(pkg.id && pkg.prices) {
+                prices[pkg.id] = pkg.prices;
+                // تحديث أسماء الباقات في UI
+                updatePkgCard(pkg);
+              }
+            });
+            // حفظ أسماء الباقات للاستخدام في كل مكان
+            window._pkgNames = {};
+            pkgs.forEach(p => {
+              window._pkgNames[p.id] = (p.icon||'') + ' ' + (p.name_ar||p.id);
+            });
+            console.log('✅ Packages loaded from Supabase:', pkgs.length);
+          }
+        } catch(e) { console.warn('packages parse error:', e); }
+      }
+      // اسم الشركة
+      if(r.key === 'business_name' && r.value) {
+        document.querySelectorAll('.biz-name').forEach(el => el.textContent = r.value);
+        document.title = r.value + ' — احجز خدمتك';
+      }
+      // رقم التواصل
+      if(r.key === 'business_phone' && r.value) {
+        document.querySelectorAll('.biz-phone').forEach(el => el.textContent = r.value);
+      }
+    });
+    // تحديث min_booking_hours كرقم
+    if(sysSettings.min_booking_hours) sysSettings.min_booking_hours = parseFloat(sysSettings.min_booking_hours)||2;
+    if(sysSettings.cancel_hours) sysSettings.cancel_hours = parseFloat(sysSettings.cancel_hours)||1;
+    console.log('✅ Settings loaded, WA provider:', waConfig.wa_provider);
+  } catch(e) { console.warn('تعذر تحميل الإعدادات:', e); }
+}
+
+// إرسال رسالة واتساب
+async function sendWaBooking(phone, message) {
+  const {wa_key, wa_provider, wa_phone, wa_instance, wa_api_url} = waConfig;
+  if(!wa_key) { console.warn('WA: لا يوجد API key'); return; }
+
+  const formatPhone = (p) => {
+    if(!p) return '';
+    p = p.trim().replace(/[\s\-]/g,'');
+    if(p.startsWith('+')) p = p.slice(1);
+    if(p.startsWith('00')) p = p.slice(2);
+    if(p.startsWith('05') && p.length===10) p = '966' + p.slice(1);
+    else if(p.startsWith('5') && p.length===9) p = '966' + p;
+    return p;
+  };
+
+  const target = formatPhone(phone || wa_phone);
+  const encoded = encodeURIComponent(message);
+
+  try {
+    if(wa_provider === 'greenapi') {
+      if(!wa_instance) { console.warn('Green API: instanceId مفقود'); return; }
+      const baseUrl = (wa_api_url || 'https://api.green-api.com').replace(/\/+$/, '');
+      const chatId  = target + '@c.us';
+      console.log('📤 Green API → chatId:', chatId);
+      const res = await fetch(
+        `${baseUrl}/waInstance${wa_instance}/sendMessage/${wa_key}`,
+        { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({chatId, message}) }
+      );
+      const result = await res.json().catch(()=>({}));
+      console.log('Green API result:', result);
+
+    } else if(wa_provider === 'textmebot') {
+      const img = new Image();
+      img.src = `https://api.textmebot.com/send.php?recipient=${target}&apikey=${wa_key}&text=${encoded}&json=yes`;
+
+    } else {
+      // CallMeBot
+      const img = new Image();
+      img.src = `https://api.callmebot.com/whatsapp.php?phone=${formatPhone(wa_phone)}&text=${encoded}&apikey=${wa_key}`;
+    }
+  } catch(e) { console.error('WA send error:', e); }
+}
+
+// ══════════ STATE ══════════
+let state = {
+  serviceType: 'car',
+  pkg: null,
+  size: null,
+  carBrand: '',
+  carType: '',
+  price: 0,
+  name: '',
+  phone: '',
+  lat: null,
+  lng: null,
+  address: '',
+  date: '',
+  time: '',
+};
+
+const prices = {
+  basic:  { small:50,  medium:55,  large:65  },
+  gold:   { small:160, medium:180, large:190 },
+  silver: { small:410, medium:430, large:450 },
+};
+
+// تحديث بطاقة الباقة في UI لما تُحمَّل من Supabase
+function updatePkgCard(pkg) {
+  try {
+    const card = document.querySelector('.pkg-card.' + pkg.id);
+    if(!card) return;
+    // اسم الباقة
+    const nameEl = card.querySelector('.pkg-name');
+    if(nameEl && pkg.name_ar) nameEl.textContent = (pkg.icon||'') + ' ' + pkg.name_ar;
+    // أسعار في صفحة الاختيار
+    const priceEl = card.querySelector('.pkg-price');
+    if(priceEl && pkg.prices) priceEl.textContent = 'يبدأ من ' + pkg.prices.small + ' ريال';
+  } catch(e) {}
+}
+
+// ══════════ MAP ══════════
+let map, marker;
+
+function initMap() {
+  // تهيئة الخريطة مع خيارات أداء محسّنة
+  map = L.map('map', {
+    preferCanvas: true,
+    zoomAnimation: true,
+    fadeAnimation: true,
+    markerZoomAnimation: true
+  }).setView([24.7136, 46.6753], 13);
+
+  // استخدام خوادم متعددة لتوزيع التحميل
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap',
+    maxZoom: 19,
+    tileSize: 256,
+    keepBuffer: 2,
+    updateWhenIdle: false,
+    updateWhenZooming: false
+  }).addTo(map);
+
+  const icon = L.divIcon({
+    html:'<div style="background:#f5c842;width:24px;height:24px;border-radius:50%;border:3px solid #0a0f2e;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>',
+    className:'',iconSize:[24,24],iconAnchor:[12,12]
+  });
+
+  marker = L.marker([24.7136,46.6753],{draggable:true,icon}).addTo(map);
+  marker.on('dragend', e => {
+    const p = e.target.getLatLng();
+    state.lat = p.lat; state.lng = p.lng;
+    reverseGeocode(p.lat, p.lng);
+  });
+
+  map.on('click', e => {
+    marker.setLatLng(e.latlng);
+    state.lat = e.latlng.lat; state.lng = e.latlng.lng;
+    reverseGeocode(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function autoLocate() {
+  if(!navigator.geolocation){
+    document.getElementById('map-address').innerHTML = '❌ المتصفح لا يدعم تحديد الموقع';
+    return;
+  }
+  const addrEl = document.getElementById('map-address');
+  addrEl.innerHTML = '⏳ جاري تحديد موقعك...';
+
+  // محاولة أولى: دقة عالية
+  const tryHighAccuracy = () => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        state.lat = lat; state.lng = lng;
+        map.setView([lat,lng],16);
+        marker.setLatLng([lat,lng]);
+        reverseGeocode(lat,lng);
+      },
+      () => {
+        // محاولة ثانية: دقة عادية
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const {latitude:lat, longitude:lng} = pos.coords;
+            state.lat = lat; state.lng = lng;
+            map.setView([lat,lng],15);
+            marker.setLatLng([lat,lng]);
+            reverseGeocode(lat,lng);
+          },
+          (err) => {
+            if(err.code === 1) {
+              addrEl.innerHTML = '❌ يرجى السماح بالوصول للموقع من إعدادات المتصفح، أو حرك الدبوس يدوياً';
+            } else {
+              addrEl.innerHTML = '❌ تعذر تحديد الموقع — حرك الدبوس يدوياً';
+            }
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  };
+
+  tryHighAccuracy();
+}
+
+function enableManualPin() {
+  document.getElementById('map-address').innerHTML = '👆 اضغط على الخريطة لتحديد موقعك';
+}
+
+function reverseGeocode(lat,lng) {
+  fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`)
+    .then(r=>r.json()).then(d=>{
+      const addr = d.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      state.address = addr;
+      document.getElementById('map-address').innerHTML = `<strong>📍</strong> ${addr}`;
+    }).catch(()=>{
+      state.address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      document.getElementById('map-address').innerHTML = `<strong>📍</strong> ${state.address}`;
+    });
+}
+
+// ══════════ SERVICE ══════════
+function selectService(type, el) {
+  state.serviceType = 'car';
+  document.getElementById('car-section').style.display = 'block';
+  document.getElementById('car-price-display').style.display = 'none';
+  const addons = document.getElementById('pkg-addons');
+  const notice = document.getElementById('exterior-notice');
+  if(addons) addons.style.display = 'none';
+  if(notice) notice.style.display = 'none';
+  state.price = 0;
+  state.addons = {};
+  state.date = '';
+  state.time = '';
+  state.timeLabel = '';
+  state.slotId = null;
+  state.slotType = null;
+  if(selectedCalDate) {
+    selectedCalDate = null;
+    renderCalendar();
+  }
+}
+
+// إضافات الباقات
+const PKG_ADDONS = {
+  basic: [
+    { id:'rims', name:'إزالة بقع الجنوط', price:15 },
+    { id:'headlights', name:'تلميع الأنوار الأمامية', price:35 },
+    { id:'engine', name:'تنظيف المحرك', price:20 },
+    { id:'undercarriage', name:'غسيل سفلي', price:20 },
+    { id:'protection', name:'معزز لمعة + حماية ضد الماء', price:20 },
+    { id:'mats', name:'تكييس الدوسات (4 دوسات)', price:15 },
+    { id:'sponges', name:'قطع اسفنجية لحماية الأبواب', price:15 },
+    { id:'smell', name:'تفجير علبة رائحة الوكالة', price:75 },
+    { id:'engine_under', name:'تنظيف المحرك + غسيل سفلي', price:35 },
+  ],
+  gold: [
+    { id:'rims', name:'إزالة بقع الجنوط', price:15 },
+    { id:'headlights', name:'تلميع الأنوار الأمامية', price:35 },
+    { id:'engine', name:'تنظيف المحرك', price:20 },
+    { id:'protection', name:'معزز لمعة + حماية ضد الماء', price:20 },
+    { id:'sponges', name:'قطع اسفنجية لحماية الأبواب', price:15 },
+    { id:'smell', name:'تفجير علبة رائحة الوكالة', price:75 },
+  ],
+  silver: [] // شاملة ما فيها إضافات
+};
+
+state.addons = {}; // الإضافات المختارة
+
+function selectPkg(pkg, el) {
+  state.pkg = pkg;
+  state.addons = {};
+  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('size-section').style.display = 'block';
+  document.getElementById('car-brand-section').style.display = 'block';
+  document.getElementById('car-type-section').style.display = 'block';
+  document.getElementById('car-count-section').style.display = 'block';
+  state.carCount = 1;
+  document.getElementById('carCountDisplay').textContent = '1';
+
+  // إظهار تنبيه الغسيل الخارجي للباقة الأساسية
+  const extNotice = document.getElementById('exterior-notice');
+  if(extNotice) extNotice.style.display = pkg==='basic' ? 'block' : 'none';
+
+  // عرض الإضافات
+  renderAddons(pkg);
+  const p = prices[pkg];
+  document.getElementById('sp-small').textContent = p.small+' ريال';
+  document.getElementById('sp-medium').textContent = p.medium+' ريال';
+  document.getElementById('sp-large').textContent = p.large+' ريال';
+  document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active'));
+  state.size = null; state.price = 0;
+  document.getElementById('car-price-display').style.display='none';
+  state.date = '';
+  state.time = '';
+  state.timeLabel = '';
+  state.slotId = null;
+  state.slotType = pkg;
+  if(selectedCalDate) {
+    selectedCalDate = null;
+    renderCalendar();
+  }
+}
+
+function selectSize(size, el) {
+  state.size = size;
+  document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const basePrice = prices[state.pkg][size];
+  const addonsTotal = Object.values(state.addons||{}).reduce((s,a)=>s+a.price, 0);
+  state.price = basePrice + addonsTotal;
+  document.getElementById('car-price-display').style.display='flex';
+  document.getElementById('selected-price-text').textContent = state.price+' ريال';
+  const noteEl = document.getElementById('price-detail-note');
+  if(noteEl) noteEl.textContent = addonsTotal>0 ? `${basePrice} + إضافات ${addonsTotal} ريال` : '';
+}
+
+function updateCarPrice() {
+  if(!state.pkg || !state.size) return;
+  const basePrice = prices[state.pkg]?.[state.size] || 0;
+  const addonsTotal = Object.values(state.addons||{}).reduce((s,a)=>s+a.price, 0);
+  const carCount = state.carCount || 1;
+  state.price = (basePrice + addonsTotal) * carCount;
+  document.getElementById('selected-price-text').textContent = state.price+' ريال';
+  const noteEl = document.getElementById('price-detail-note');
+  if(noteEl) noteEl.textContent = carCount>1 ? `(${basePrice}${addonsTotal>0?' + إضافات '+addonsTotal:''}) × ${carCount} سيارات` : (addonsTotal>0 ? `${basePrice} + إضافات ${addonsTotal} ريال` : '');
+}
+
+function changeCarCount(delta) {
+  state.carCount = Math.max(1, (state.carCount||1) + delta);
+  document.getElementById('carCountDisplay').textContent = state.carCount;
+  if(state.pkg && state.size) updateCarPrice();
+}
+
+// ══════════ ADDONS ══════════
+function renderAddons(pkg) {
+  const addons = PKG_ADDONS[pkg] || [];
+  const container = document.getElementById('pkg-addons');
+  const list = document.getElementById('addons-list');
+  if(!container || !list) return;
+
+  if(addons.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+
+  list.innerHTML = addons.map(a=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg2);border-radius:8px;border:1.5px solid var(--border);cursor:pointer;transition:all .2s;"
+      id="addon-${a.id}" onclick="toggleAddon('${a.id}',${a.price},'${a.name}')">
+      <div style="font-size:13px;font-weight:600;">${a.name}</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="color:var(--yellow);font-weight:700;">${a.price} ريال</span>
+        <span id="addon-check-${a.id}" style="font-size:16px;">⬜</span>
+      </div>
+    </div>`).join('');
+
+  updateAddonTotal();
+}
+
+function toggleAddon(id, price, name) {
+  if(state.addons[id]) {
+    delete state.addons[id];
+    document.getElementById('addon-'+id).style.borderColor = 'var(--border)';
+    document.getElementById('addon-check-'+id).textContent = '⬜';
+  } else {
+    state.addons[id] = { price, name };
+    document.getElementById('addon-'+id).style.borderColor = 'var(--yellow)';
+    document.getElementById('addon-check-'+id).textContent = '✅';
+  }
+  updateAddonTotal();
+  updateCarPrice();
+}
+
+function updateAddonTotal() {
+  const addons = Object.values(state.addons);
+  const totalEl = document.getElementById('addons-total');
+  const breakdownEl = document.getElementById('addons-breakdown');
+  const sumEl = document.getElementById('addons-sum');
+  if(!totalEl) return;
+
+  if(addons.length === 0) {
+    totalEl.style.display = 'none';
+    return;
+  }
+  totalEl.style.display = 'block';
+  const total = addons.reduce((s,a)=>s+a.price, 0);
+  breakdownEl.innerHTML = addons.map(a=>`<div style="margin-bottom:3px;">+ ${a.name}: <strong>${a.price} ريال</strong></div>`).join('');
+  sumEl.textContent = `إجمالي الإضافات: ${total} ريال`;
+}
+
+// ══════════ STEPS ══════════
+function goTo(page) {
+  if(page===2) {
+    if(state.serviceType==='car') {
+      if(!state.pkg||!state.size) { alert('اختر الباقة وحجم السيارة أولاً'); return; }
+      state.carBrand = document.getElementById('carBrand').value.trim();
+      state.carType = document.getElementById('carType').value.trim();
+      if(!state.carBrand) { alert('أدخل ماركة السيارة — مثال: تويوتا، BMW...'); return; }
+      if(!state.carType) { alert('أدخل نوع السيارة — مثال: كامري، باترول...'); return; }
+    }
+  }
+  if(page===3) {
+    if(!state.date) { alert('اختر اليوم من التقويم'); return; }
+    if(!state.time) { alert('اختر الوقت المتاح'); return; }
+  }
+  if(page===4) {
+    state.name = document.getElementById('clientName').value.trim();
+    state.phone = document.getElementById('clientPhone').value.trim();
+    if(!state.name) { alert('أدخل اسمك الكريم'); return; }
+    if(!state.phone || state.phone.length < 10) { alert('أدخل رقم جوال صحيح (10 أرقام)'); return; }
+    if(!state.lat) { alert('حدد موقعك على الخريطة'); return; }
+    buildSummary();
+  }
+
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page'+page).classList.add('active');
+  updateSteps(page);
+  updateHeaderBack(page);
+  sessionStorage.setItem('mghasil_page', page);
+  // تهيئة الخريطة فقط عند الوصول لصفحة البيانات
+  if(page === 3 && !map) {
+    setTimeout(()=>{ initMap(); }, 100);
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function updateHeaderBack(page) {
+  const btn = document.getElementById('headerBack');
+  if(page > 1 && page < 5) {
+    btn.classList.add('visible');
+  } else {
+    btn.classList.remove('visible');
+  }
+}
+
+function headerGoBackFixed() {
+  const cur = parseInt(sessionStorage.getItem('mghasil_page') || '1');
+  // الرجوع للخلف بدون validation
+  const prev = {2:1, 3:2, 4:3}[cur];
+  if(!prev) { goHome(); return; }
+  // انتقال مباشر بدون تحقق
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page'+prev).classList.add('active');
+  sessionStorage.setItem('mghasil_page', prev);
+  updateSteps(prev);
+  updateHeaderBack(prev);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function headerGoBack() {
+  const pages = {2:1, 3:2, 4:3};
+  const cur = parseInt(sessionStorage.getItem('mghasil_page') || '1');
+  const prev = pages[cur];
+  if(prev) goTo(prev);
+}
+
+function updateSteps(page) {
+  for(let i=1;i<=4;i++){
+    const s = document.getElementById('s'+i);
+    const l = document.getElementById('l'+i);
+    s.classList.remove('active','done');
+    if(l) l.classList.remove('done');
+    if(i<page){ s.classList.add('done'); if(l) l.classList.add('done'); }
+    else if(i===page) s.classList.add('active');
+  }
+}
+
+function buildSummary() {
+  const pkgNames = window._pkgNames || {basic:'الباقة الأساسية 🔵',gold:'الباقة الفضية �',silver:'الباقة الذهبية 🥇'};
+  const sizeNames = {small:'صغير',medium:'وسط',large:'كبير'};
+  const dateFormatted = state.date ? new Date(state.date).toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : '—';
+
+  let serviceInfo = `
+      <div class="summary-row"><span class="lbl">الباقة</span><span class="val">${pkgNames[state.pkg]||'—'}</span></div>
+      <div class="summary-row"><span class="lbl">حجم السيارة</span><span class="val">${sizeNames[state.size]||'—'}</span></div>
+      ${state.carBrand?`<div class="summary-row"><span class="lbl">ماركة السيارة</span><span class="val">${state.carBrand} ${state.carType}</span></div>`:''}
+    `;
+
+  document.getElementById('summaryCard').innerHTML = `
+    <div class="summary-icon">📋</div>
+    <div class="summary-row"><span class="lbl">الاسم</span><span class="val">${state.name}</span></div>
+    <div class="summary-row"><span class="lbl">رقم الجوال</span><span class="val">${state.phone}</span></div>
+    ${serviceInfo}
+    <div class="summary-row"><span class="lbl">الموقع</span><span class="val" style="font-size:11px;max-width:200px;text-align:left;">${state.address.substring(0,60)}...</span></div>
+    <div class="summary-row"><span class="lbl">التاريخ</span><span class="val">${dateFormatted}</span></div>
+    <div class="summary-row"><span class="lbl">الوقت</span><span class="val">${state.timeLabel||state.time}</span></div>
+    <div class="summary-row total"><span class="lbl">الإجمالي</span><span class="val">${state.price} ريال</span></div>
+  `;
+}
+
+function startBooking() {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page1').classList.add('active');
+  document.getElementById('stepsWrap').style.display = 'block';
+  document.getElementById('headerBack').classList.add('visible');
+  sessionStorage.setItem('mghasil_page', '1');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function startEdit() {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-edit').classList.add('active');
+  document.getElementById('stepsWrap').style.display = 'none';
+  document.getElementById('headerBack').classList.remove('visible');
+  document.getElementById('editPhone').value = '';
+  document.getElementById('editResult').style.display = 'none';
+  document.getElementById('editError').style.display = 'none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// بيانات تجريبية للتعديل — تُستبدل بـ Supabase
+async function searchBooking() {
+  const phone = document.getElementById('editPhone').value.trim();
+  if(!phone || phone.length < 10) { alert('أدخل رقم جوال صحيح'); return; }
+
+  const errEl = document.getElementById('editError');
+  const listEl = document.getElementById('bookingsList');
+  errEl.style.display = 'none';
+  listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">⏳ جاري البحث...</div>';
+  listEl.style.display = 'block';
+
+  let bookings = [];
+  try {
+    const { data, error } = await db
+      .from('appointments')
+      .select('*')
+      .eq('phone', phone)
+      .order('date', { ascending: true });
+    if(!error && data) bookings = data;
+  } catch(e) {
+    const saved = sessionStorage.getItem('mghasil_last_booking');
+    if(saved) { const b=JSON.parse(saved); if(b.phone===phone) bookings=[b]; }
+  }
+
+  if(!bookings.length) {
+    errEl.style.display='block';
+    listEl.style.display='none';
+    return;
+  }
+
+  const now = new Date();
+  const days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const statusColors={pending:'var(--yellow)',confirmed:'var(--blue)',done:'var(--green)',cancelled:'var(--red)'};
+  const statusLabels={pending:'انتظار',confirmed:'مؤكد',done:'منتهي',cancelled:'ملغي'};
+  const pkgNames={basic:'الأساسية 🔵',gold:'الفضية 🥈',silver:'الذهبية 🥇'};
+
+  listEl.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px;">مواعيد ${bookings[0]?.name||''}</div>` +
+  bookings.map(b => {
+    const dt = new Date(b.date+'T'+(b.time||'00:00')+':00');
+    const dateObj = new Date(b.date+'T00:00:00');
+    const dateLabel = `${days[dateObj.getDay()]}، ${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
+    const diffHours = (dt-now)/(1000*60*60);
+    const isPast = dt < now;
+    const canEdit = (b.status==='pending'||b.status==='confirmed') && diffHours >= 24;
+    const isCurrent = dateLabel === currentBookingDate;
+    const svcName = pkgNames[b.package]||b.service_type||'—';
+    const sColor = statusColors[b.status]||'var(--muted)';
+
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div>
+          <div style="font-weight:700;font-size:14px;">${svcName}</div>
+          ${b.car_brand?`<div style="font-size:12px;color:var(--muted);">${b.car_brand} ${b.car_type||''}</div>`:''}
+        </div>
+        <span style="color:${sColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:${sColor}18;">${statusLabels[b.status]||b.status}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:13px;">
+        <span>📅</span> <span style="font-weight:600;">${dateLabel}</span>
+        <span style="color:var(--yellow);font-weight:700;">— ${b.time_label||b.time||''}</span>
+      </div>
+      <div style="font-size:13px;margin-bottom:12px;color:var(--green);font-weight:700;">${b.price||0} ريال</div>
+      ${canEdit ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button style="flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;font-family:Cairo,Arial;"
+          onclick="startEditAppt('${b.id}','${b.phone}','${b.date}','${b.time||''}','${b.time_label||b.time||''}','${(b.car_brand||'')+' '+(b.car_type||'')}','${svcName}',${b.price||0})">
+          ✏️ تعديل الموعد
+        </button>
+        <button style="flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;font-family:Cairo,Arial;"
+          onclick="startEditLocation('${b.id}')">
+          📍 تعديل الموقع
+        </button>
+      </div>` : `
+      <div style="font-size:11px;color:var(--muted);text-align:center;padding:6px;background:var(--bg2);border-radius:8px;">
+        ${isPast||b.status==='cancelled'||b.status==='done' ? '⛔ لا يمكن التعديل' : '⏰ التعديل متاح قبل 24 ساعة فقط'}
+      </div>`}
+    </div>`;
+  }).join('');
+}
+
+function startEditAppt(id, phone, date, time, timeLabel, car, service, price) {
+  window._editBooking = { id, phone, date, time, timeLabel, car, service, price };
+  window._editPhone = phone;
+  window._editNewSlot = null;
+  document.getElementById('editStep1').style.display = 'none';
+  document.getElementById('editStep2').style.display = 'block';
+  document.getElementById('editSelectedSlot').style.display = 'none';
+  document.getElementById('editSlotsWrap').style.display = 'none';
+
+  // عرض ملخص الحجز
+  const dateObj = new Date(date+'T00:00:00');
+  const days=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  document.getElementById('editResultRows').innerHTML = `
+    <div class="edit-row"><span class="el">الخدمة</span><span class="ev">${service}</span></div>
+    <div class="edit-row"><span class="el">السيارة</span><span class="ev">${car}</span></div>
+    <div class="edit-row"><span class="el">الموعد الحالي</span><span class="ev">${days[dateObj.getDay()]}، ${dateObj.getDate()} ${months[dateObj.getMonth()]} — ${timeLabel}</span></div>
+    <div class="edit-row"><span class="el">السعر</span><span class="ev">${price} ريال</span></div>
+  `;
+  initEditCalendar();
+}
+
+async function startEditLocation(id) {
+  // جلب بيانات الحجز
+  const { data } = await db.from('appointments').select('lat,lng,address').eq('id',id).single();
+
+  // إخفاء قائمة الحجوزات وعرض الخريطة
+  document.getElementById('editStep1').style.display = 'none';
+  document.getElementById('editStep2').style.display = 'none';
+  document.getElementById('editStepLocation').style.display = 'block';
+
+  window._editLocationId = id;
+
+  // تهيئة الخريطة
+  setTimeout(() => {
+    if(!window._editLocMap) {
+      window._editLocMap = L.map('editLocMap').setView([26.6459, 50.0756], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window._editLocMap);
+      window._editLocMarker = L.marker([26.6459, 50.0756], {draggable:true}).addTo(window._editLocMap);
+      window._editLocMarker.on('dragend', e => {
+        const ll = e.target.getLatLng();
+        window._editLocLat = ll.lat; window._editLocLng = ll.lng;
+      });
+    } else { window._editLocMap.invalidateSize(); }
+    if(data?.lat && data?.lng) {
+      window._editLocMap.setView([data.lat, data.lng], 15);
+      window._editLocMarker.setLatLng([data.lat, data.lng]);
+      window._editLocLat = data.lat; window._editLocLng = data.lng;
+    }
+  }, 300);
+}
+
+async function saveEditLocation() {
+  const id = window._editLocationId;
+  const lat = window._editLocLat;
+  const lng = window._editLocLng;
+  if(!id || !lat || !lng) { alert('حدد موقعك على الخريطة أولاً'); return; }
+  await db.from('appointments').update({ lat, lng }).eq('id', id);
+  alert('✅ تم تحديث موقعك بنجاح!');
+  backToBookingsList();
+}
+
+function backToBookingsList() {
+  document.getElementById('editStep2').style.display = 'none';
+  document.getElementById('editStepLocation').style.display = 'none';
+  document.getElementById('editStep1').style.display = 'block';
+}
+
+function backToEditSearch() {
+  document.getElementById('editStep1').style.display = 'block';
+  document.getElementById('editStep2').style.display = 'none';
+  window._editNewSlot = null;
+}
+
+// ══════════ EDIT CALENDAR ══════════
+let editCalYear, editCalMonth;
+
+async function initEditCalendar() {
+  const now = new Date();
+  editCalYear = now.getFullYear();
+  editCalMonth = now.getMonth();
+  await prefetchMonthSlots(editCalYear, editCalMonth);
+  renderEditCalendar();
+}
+
+async function changeEditMonth(dir) {
+  editCalMonth += dir;
+  if(editCalMonth > 11){ editCalMonth=0; editCalYear++; }
+  if(editCalMonth < 0){ editCalMonth=11; editCalYear--; }
+  await prefetchMonthSlots(editCalYear, editCalMonth);
+  renderEditCalendar();
+}
+
+function renderEditCalendar() {
+  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  document.getElementById('editCalMonthLabel').textContent = months[editCalMonth] + ' ' + editCalYear;
+
+  const grid = document.getElementById('editCalGrid');
+  grid.innerHTML = '';
+
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const firstDay = new Date(editCalYear, editCalMonth, 1).getDay();
+  const daysInMonth = new Date(editCalYear, editCalMonth+1, 0).getDate();
+  const currentBookingDate = window._editBooking ? window._editBooking.date : null;
+
+  for(let i=0; i<firstDay; i++){
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
+
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${editCalYear}-${String(editCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEl = document.createElement('div');
+    dayEl.className = 'cal-day';
+
+    const numEl = document.createElement('div');
+    numEl.className = 'day-num';
+    numEl.textContent = d;
+
+    const slotEl = document.createElement('div');
+    slotEl.className = 'day-slots';
+
+    const isPast = dateStr < todayStr;
+    const isToday = dateStr === todayStr;
+    const isCurrent = dateStr === currentBookingDate;
+    const status = getDayStatus(dateStr);
+
+    if(isPast) {
+      dayEl.classList.add('past');
+    } else if(isCurrent) {
+      // اليوم الحالي للحجز — يظهر بلون مختلف
+      dayEl.style.border = '2px solid var(--yellow)';
+      dayEl.style.opacity = '0.6';
+      slotEl.textContent = 'حجزك';
+      slotEl.style.color = 'var(--yellow)';
+      dayEl.style.pointerEvents = 'none';
+    } else if(status === 'available') {
+      dayEl.classList.add('has-slots');
+      const slots = getMockSlots(dateStr);
+      const avail = slots.filter(s=>s.booked<s.capacity).length;
+      slotEl.textContent = avail + ' وقت';
+      dayEl.onclick = () => selectEditDay(dateStr, dayEl);
+    } else if(status === 'full') {
+      dayEl.classList.add('full');
+      slotEl.textContent = 'ممتلئ';
+    } else {
+      dayEl.style.opacity = '0.3';
+      dayEl.style.pointerEvents = 'none';
+    }
+
+    if(isToday) dayEl.classList.add('today-marker');
+
+    dayEl.appendChild(numEl);
+    dayEl.appendChild(slotEl);
+    grid.appendChild(dayEl);
+  }
+}
+
+async function selectEditDay(dateStr, dayEl) {
+  document.querySelectorAll('#editCalGrid .cal-day').forEach(d=>d.classList.remove('selected'));
+  dayEl.classList.add('selected');
+  document.getElementById('editSelectedSlot').style.display = 'none';
+  window._editNewSlot = null;
+  await loadEditSlots(dateStr);
+}
+
+async function loadEditSlots(dateStr) {
+  await fetchSlotsFromSupabase(dateStr);
+  const wrap = document.getElementById('editSlotsWrap');
+  const grid = document.getElementById('editSlotsGrid');
+  const empty = document.getElementById('editSlotsEmpty');
+  const label = document.getElementById('editSlotsDateLabel');
+
+  wrap.style.display = 'block';
+  grid.innerHTML = '';
+  empty.style.display = 'none';
+
+  const dateObj = new Date(dateStr + 'T00:00:00');
+  const days = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  label.textContent = `${days[dateObj.getDay()]}، ${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
+  const dateLabel = label.textContent;
+
+  const slots = getMockSlots(dateStr) || [];
+  const now = new Date();
+
+  if(slots.length === 0) { empty.style.display = 'block'; return; }
+
+  let hasAny = false;
+  slots.forEach(slot => {
+    const isFull = slot.booked >= slot.capacity;
+    const slotDateTime = new Date(`${dateStr}T${slot.time}:00`);
+    const minMs2 = (sysSettings.min_booking_hours||2) * 60 * 60 * 1000;
+    const tooSoon2 = (slotDateTime - now) < minMs2;
+    const isPast = slotDateTime <= now || tooSoon2;
+    const el = document.createElement('div');
+    el.className = 'slot-item' + (isFull||isPast?' taken':'');
+    el.innerHTML = `<div class="slot-time">${slot.label}</div><div class="slot-avail">${isFull||isPast?'غير متاح':(slot.capacity-slot.booked)+' متبقي'}</div>`;
+    if(!isFull && !isPast) {
+      hasAny = true;
+      el.onclick = () => {
+        document.querySelectorAll('#editSlotsGrid .slot-item').forEach(s=>s.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('editSelectedSlot').style.display = 'flex';
+        document.getElementById('editSlotVal').textContent = `${dateLabel} — ${slot.label}`;
+        window._editNewSlot = { ...slot, date: dateStr, dateLabel };
+      };
+    }
+    grid.appendChild(el);
+  });
+
+  if(!hasAny) empty.style.display = 'block';
+  wrap.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+async function confirmEdit() {
+  if(!window._editNewSlot) { alert('اختر وقتاً جديداً أولاً'); return; }
+
+  try {
+    const slot = window._editNewSlot;
+    const booking = window._editBooking;
+
+    // تحديث الحجز في Supabase
+    if(booking.id) {
+      await db.from('appointments')
+        .update({
+          date: slot.date,
+          time: slot.time,
+          time_label: slot.label,
+          is_edited: true,
+          is_reviewed: false
+        })
+        .eq('id', booking.id);
+
+      // تسجيل في سجل التعديلات
+      await db.from('appointment_logs').insert([{
+        appointment_id: booking.id,
+        action: 'edited',
+        old_date: booking.date,
+        old_time: booking.time,
+        new_date: slot.date,
+        new_time: slot.time,
+        changed_by: 'client'
+      }]);
+    }
+
+    // تحديث sessionStorage
+    const saved = sessionStorage.getItem('mghasil_last_booking');
+    if(saved) {
+      const b = JSON.parse(saved);
+      b.date = slot.date;
+      b.time = slot.time;
+      b.timeLabel = slot.label || slot.time;
+      sessionStorage.setItem('mghasil_last_booking', JSON.stringify(b));
+    }
+
+    // إرسال إيميل للعامل عند التعديل
+    try {
+      // جلب بيانات العامل من الحجز
+      if(booking.id) {
+        const { data: apptData } = await db
+          .from('appointments')
+          .select('*, workers(name, email)')
+          .eq('id', booking.id)
+          .single();
+
+        if(apptData?.workers?.email) {
+          await fetch('https://yrcyjoymkthikybsecsf.supabase.co/functions/v1/send-booking-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
+            body: JSON.stringify({
+              type: 'edit',
+              appt: {
+                name:         booking.name,
+                phone:        booking.phone || window._editPhone,
+                package:      booking.service,
+                car_brand:    booking.car?.split(' ')[0] || '',
+                car_type:     booking.car?.split(' ')[1] || '',
+                date:         slot.date,
+                time:         slot.time,
+                time_label:   slot.label || slot.time,
+                price:        booking.price,
+                worker_email: apptData.workers.email,
+                worker_name:  apptData.workers.name
+              }
+            })
+          });
+        }
+      }
+    } catch(emailErr) {
+      console.warn('تحذير: فشل إرسال إيميل التعديل:', emailErr);
+    }
+
+    alert('✅ تم تعديل موعدك بنجاح!');
+    goHome();
+
+  } catch(e) {
+    console.error('خطأ في التعديل:', e);
+    alert('حدث خطأ. حاول مرة ثانية.');
+  }
+}
+
+function goHome() {
+  // إعادة تعيين الحالة والرجوع للصفحة الأولى
+  state = {
+    serviceType:'car', pkg:null, size:null, carBrand:'', carType:'',
+    price:0, name:'', phone:'', lat:null, lng:null, address:'', date:'', time:'', timeLabel:'', slotId:null, slotType:null
+  };
+  sessionStorage.removeItem('mghasil_page');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page0').classList.add('active');
+  document.getElementById('stepsWrap').style.display = 'none';
+  updateHeaderBack(0);
+  // إعادة تعيين النماذج
+  document.querySelectorAll('.pkg-card').forEach(c=>c.classList.remove('selected'));
+  document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('car-price-display').style.display='none';
+  document.getElementById('size-section').style.display='none';
+  document.getElementById('car-brand-section').style.display='none';
+  document.getElementById('car-type-section').style.display='none';
+  document.getElementById('car-count-section').style.display='none';
+  document.getElementById('carBrand').value='';
+  document.getElementById('carType').value='';
+  document.getElementById('carCountDisplay').textContent='1';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function confirmBooking() {
+  const pkgNames = {basic:'الباقة الأساسية 🔵', gold:'الباقة الفضية 🥈', silver:'الباقة الذهبية 🥇'};
+
+  // إظهار loading
+  document.querySelector('#page4 .btn-next').textContent = '⏳ جاري الحفظ...';
+  document.querySelector('#page4 .btn-next').disabled = true;
+
+  try {
+    // 1. التوزيع التلقائي على العمال
+    const workerData = await autoAssignWorkerBooking(state.date);
+
+    // 2. حفظ الحجز في Supabase
+    const { data, error } = await db.from('appointments').insert([{
+      booking_ref:  state.phone + '_' + Date.now(),
+      phone:        state.phone,
+      name:         state.name,
+      service_type: state.serviceType,
+      package:      state.pkg || null,
+      car_brand:    state.carBrand || null,
+      car_type:     state.carType || null,
+      car_size:     state.size || null,
+      car_count:    state.carCount || 1,
+      price:        state.price,
+      lat:          state.lat,
+      lng:          state.lng,
+      address:      state.address,
+      date:         state.date,
+      time:         state.time,
+      time_label:   state.timeLabel || state.time,
+      status:       'confirmed',
+      worker_id:    workerData?.id || null
+    }]).select().single();
+
+    if(error) throw error;
+
+    // 3. تحديث عداد الحجوزات في available_slots
+    const slot = slotsCache[state.date]?.find(s => s.id === state.slotId)
+      || slotsCache[state.date]?.find(s => s.time === state.time && (s.slot_type || 'basic') === (state.slotType || 'basic'));
+    if(slot) {
+      await db.from('available_slots')
+        .update({ booked: slot.booked + 1 })
+        .eq('id', slot.id);
+      slotsCache[state.date] = (slotsCache[state.date] || []).map(s => s.id === slot.id ? { ...s, booked: slot.booked + 1 } : s);
+    }
+
+    // 4. إرسال إيميل للعامل عبر Edge Function
+    if(workerData?.email) {
+      try {
+        await fetch('https://yrcyjoymkthikybsecsf.supabase.co/functions/v1/send-booking-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify({
+            type: 'new',
+            appt: {
+              name:         state.name,
+              phone:        state.phone,
+              package:      pkgNames[state.pkg] || state.serviceType,
+              car_brand:    state.carBrand || '',
+              car_type:     state.carType || '',
+              date:         state.date,
+              time:         state.time,
+              time_label:   state.timeLabel || state.time,
+              price:        state.price,
+              lat:          state.lat,
+              lng:          state.lng,
+              worker_email: workerData.email,
+              worker_name:  workerData.name
+            }
+          })
+        });
+        console.log('✅ إيميل أُرسل للعامل:', workerData.email);
+      } catch(emailErr) {
+        console.warn('تحذير: فشل إرسال الإيميل:', emailErr);
+        // لا نوقف الحجز لو فشل الإيميل
+      }
+    }
+
+    // 5. إرسال إشعارات واتساب
+    try {
+      const bizName  = waConfig.business_name || 'إدارة مغاسل';
+      const svcLabel = pkgNames[state.pkg] || 'غسيل سيارة';
+      const dateObj = new Date(state.date + 'T00:00:00');
+      const daysAr  = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+      const monthsAr= ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+      const dateAr  = daysAr[dateObj.getDay()] + ' ' + dateObj.getDate() + ' ' + monthsAr[dateObj.getMonth()];
+      const locationLink = (state.lat && state.lng) ? `https://maps.google.com/?q=${state.lat},${state.lng}` : '';
+      const locationText = state.address || locationLink;
+
+      // رسالة للعميل
+      const customerMsg = [
+        'تم تأكيد حجزك',
+        '━━━━━━━━━━━━━━',
+        '🏢 ' + bizName,
+        '👤 ' + state.name,
+        '📦 ' + svcLabel,
+        '📅 ' + dateAr + ' — ' + (state.timeLabel||state.time),
+        '💰 ' + state.price + ' ريال',
+        locationText ? '📍 ' + locationText : '',
+        locationLink ? '🗺️ ' + locationLink : '',
+        '━━━━━━━━━━━━━━',
+        'شكراً لثقتك بنا'
+      ].join('\n');
+      await sendWaBooking(state.phone, customerMsg);
+
+      // رسالة للأدمن
+      const adminMsg = [
+        'حجز جديد',
+        '👤 ' + state.name,
+        '📱 ' + state.phone,
+        '📦 ' + svcLabel,
+        '📅 ' + dateAr + ' — ' + (state.timeLabel||state.time),
+        '💰 ' + state.price + ' ريال',
+        locationText ? '📍 ' + locationText : '',
+        locationLink ? '🗺️ ' + locationLink : ''
+      ].join('\n');
+      await sendWaBooking(waConfig.wa_phone, adminMsg);
+
+      // رسالة للعامل
+      if(workerData?.id) {
+        let wData = null;
+        try {
+          const { data: wd } = await db.from('workers').select('name,phone').eq('id', workerData.id).single();
+          wData = wd;
+        } catch(e) { wData = null; }
+        if(wData?.phone) {
+          const workerMsg = [
+            'موعد جديد لك',
+            '━━━━━━━━━━━━━━',
+            '👤 ' + state.name,
+            '📱 ' + state.phone,
+            '📦 ' + svcLabel,
+            '📅 ' + dateAr + ' — ' + (state.timeLabel||state.time),
+            '💰 ' + state.price + ' ريال',
+            locationText ? '📍 ' + locationText : '',
+            locationLink ? '🗺️ ' + locationLink : '',
+            '━━━━━━━━━━━━━━',
+            '🏢 ' + bizName
+          ].join('\n');
+          await sendWaBooking(wData.phone, workerMsg);
+        }
+      }
+      console.log('✅ WA notifications sent');
+    } catch(waErr) {
+      console.warn('WA notify error:', waErr);
+    }
+
+    // 6. حفظ في sessionStorage
+    const bookingData = {
+      phone: state.phone, name: state.name,
+      service: pkgNames[state.pkg]||'غسيل سيارة',
+      car: (state.carBrand + ' ' + state.carType) || '—',
+      date: state.date, time: state.time,
+      timeLabel: state.timeLabel || state.time, price: state.price
+    };
+    sessionStorage.setItem('mghasil_last_booking', JSON.stringify(bookingData));
+
+    // 6. عرض صفحة النجاح
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page5').classList.add('active');
+    document.getElementById('bookingIdDisplay').textContent = state.phone;
+    updateSteps(5);
+    window.scrollTo({top:0,behavior:'smooth'});
+
+  } catch(e) {
+    console.error('خطأ في الحجز:', e);
+    alert('حدث خطأ أثناء الحجز. حاول مرة ثانية.');
+    document.querySelector('#page4 .btn-next').textContent = '✅ تأكيد الحجز';
+    document.querySelector('#page4 .btn-next').disabled = false;
+  }
+}
+
+// توزيع تلقائي على العامل الأقل مواعيد
+async function autoAssignWorkerBooking(date) {
+  try {
+    const { data: workers } = await db.from('workers')
+      .select('id, name, email, phone')
+      .eq('is_active', true);
+    if(!workers || !workers.length) return null;
+
+    const { data: appts } = await db.from('appointments')
+      .select('worker_id')
+      .eq('date', date)
+      .neq('status', 'cancelled');
+
+    const counts = {};
+    workers.forEach(w => counts[w.id] = 0);
+    (appts||[]).forEach(a => { if(a.worker_id) counts[a.worker_id] = (counts[a.worker_id]||0) + 1; });
+
+    const minWorker = workers.reduce((min, w) =>
+      (counts[w.id]||0) < (counts[min.id]||0) ? w : min, workers[0]);
+    return minWorker;
+  } catch(e) {
+    console.warn('خطأ في التوزيع:', e);
+    return null;
+  }
+}
+
+// ══════════ CALENDAR ══════════
+// ══════════════════════════════════════════════════════
+// هنا يتم الاتصال بـ Supabase لجلب المواعيد المتاحة
+// عند الربط الحقيقي، استبدل دالة getMockSlots بـ:
+// const { data } = await supabase.from('available_slots')
+//   .select('*').eq('date', dateStr).gt('remaining', 0)
+// ══════════════════════════════════════════════════════
+
+let calYear, calMonth, selectedCalDate = null;
+
+// ══════════════════════════════════════════════
+// cache للأوقات المجلوبة من Supabase
+// ══════════════════════════════════════════════
+const slotsCache = {};
+
+ function getApptSlotType(appt) {
+   return appt.package || 'basic';
+ }
+
+async function fetchSlotsFromSupabase(dateStr) {
+  if(slotsCache[dateStr] !== undefined) return slotsCache[dateStr];
+  try {
+    const [slotsRes, apptsRes] = await Promise.all([
+      db
+        .from('available_slots')
+        .select('*')
+        .eq('date', dateStr)
+        .eq('is_active', true)
+        .order('time'),
+      db
+        .from('appointments')
+        .select('time,service_type,package,status')
+        .eq('date', dateStr)
+        .neq('status', 'cancelled')
+    ]);
+    if(slotsRes.error) throw slotsRes.error;
+    if(apptsRes.error) throw apptsRes.error;
+
+    const bookedMap = {};
+    (apptsRes.data || []).forEach(appt => {
+      const key = `${appt.time}__${getApptSlotType(appt)}`;
+      bookedMap[key] = (bookedMap[key] || 0) + 1;
+    });
+
+    slotsCache[dateStr] = (slotsRes.data || []).map(slot => ({
+      ...slot,
+      booked: bookedMap[`${slot.time}__${slot.slot_type || 'basic'}`] || 0
+    }));
+    return slotsCache[dateStr];
+  } catch(e) {
+    console.error('خطأ في جلب الأوقات:', e);
+    return [];
+  }
+}
+
+// دالة متزامنة للتقويم (تستخدم الـ cache)
+function getMockSlots(dateStr) {
+  return slotsCache[dateStr] || null;
+}
+
+function getRequiredSlotTypes() {
+  if(state.pkg) return [state.pkg];
+  return ['basic', 'gold', 'silver'];
+}
+
+// جلب الأوقات مسبقاً للشهر الحالي
+async function prefetchMonthSlots(year, month) {
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const promises = [];
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    promises.push(fetchSlotsFromSupabase(dateStr));
+  }
+  await Promise.all(promises);
+}
+
+function getDayStatus(dateStr) {
+  const slots = getMockSlots(dateStr);
+  if(!slots) return 'no-data';
+  if(slots.length === 0) return 'no-slots';
+  const now = new Date();
+  const minMs = (sysSettings.min_booking_hours||2) * 60 * 60 * 1000;
+  const allowedTypes = getRequiredSlotTypes();
+  const available = slots.filter(s => {
+    if(!s.is_active) return false;
+    const slotType = s.slot_type || 'basic';
+    if(!allowedTypes.includes(slotType)) return false;
+    const slotDT = new Date(`${dateStr}T${s.time}:00`);
+    return s.booked < s.capacity && (slotDT - now) > minMs;
+  });
+  if(available.length === 0) return 'full';
+  return 'available';
+}
+
+async function initCalendar() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  // جلب أوقات الشهر من Supabase
+  await prefetchMonthSlots(calYear, calMonth);
+  renderCalendar();
+}
+
+async function changeMonth(dir) {
+  calMonth += dir;
+  if(calMonth > 11){ calMonth=0; calYear++; }
+  if(calMonth < 0){ calMonth=11; calYear--; }
+  await prefetchMonthSlots(calYear, calMonth);
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  document.getElementById('calMonthLabel').textContent = months[calMonth] + ' ' + calYear;
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+
+  for(let i=0; i<firstDay; i++){
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
+
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEl = document.createElement('div');
+    dayEl.className = 'cal-day';
+
+    const numEl = document.createElement('div');
+    numEl.className = 'day-num';
+    numEl.textContent = d;
+
+    const slotEl = document.createElement('div');
+    slotEl.className = 'day-slots';
+
+    const isPast = dateStr < todayStr;
+    const isToday = dateStr === todayStr;
+    const status = getDayStatus(dateStr);
+
+    if(isPast) {
+      dayEl.classList.add('past');
+    } else if(status === 'available') {
+      dayEl.classList.add('has-slots');
+      const slots = getMockSlots(dateStr);
+      const allowedTypes = getRequiredSlotTypes();
+      const avail = slots.filter(s=>s.booked<s.capacity && allowedTypes.includes(s.slot_type || 'basic')).length;
+      slotEl.textContent = avail + ' وقت';
+      dayEl.onclick = () => selectDay(dateStr, dayEl);
+    } else if(status === 'full') {
+      dayEl.classList.add('full');
+      slotEl.textContent = 'ممتلئ';
+    } else {
+      dayEl.style.opacity = '0.3';
+      dayEl.style.pointerEvents = 'none';
+    }
+
+    if(isToday) dayEl.classList.add('today-marker');
+    if(selectedCalDate === dateStr) dayEl.classList.add('selected');
+
+    dayEl.appendChild(numEl);
+    dayEl.appendChild(slotEl);
+    grid.appendChild(dayEl);
+  }
+}
+
+function selectDay(dateStr, dayEl) {
+  selectedCalDate = dateStr;
+  document.querySelectorAll('.cal-day').forEach(d=>d.classList.remove('selected'));
+  dayEl.classList.add('selected');
+  state.date = dateStr;
+  state.time = '';
+  state.timeLabel = '';
+  state.slotId = null;
+  state.slotType = null;
+  document.getElementById('selectedSlotDisplay').style.display = 'none';
+  loadSlots(dateStr);
+}
+
+function loadSlots(dateStr) {
+  // ══════════════════════════════════════════════════════
+  // هنا يتم جلب الأوقات من Supabase عند الربط الحقيقي:
+  // const { data } = await supabase.from('available_slots')
+  //   .select('*').eq('date', dateStr)
+  // ══════════════════════════════════════════════════════
+
+  const wrap = document.getElementById('slots-wrap');
+  const grid = document.getElementById('slotsGrid');
+  const empty = document.getElementById('slotsEmpty');
+  const label = document.getElementById('slotsDateLabel');
+
+  wrap.style.display = 'block';
+  grid.innerHTML = '';
+  empty.style.display = 'none';
+
+  const dateObj = new Date(dateStr + 'T00:00:00');
+  const days = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  label.textContent = `${days[dateObj.getDay()]}، ${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
+
+  const allSlots = slotsCache[dateStr] || [];
+
+  // تصفية الأوقات حسب الباقة المختارة
+  const allowedTypes = getRequiredSlotTypes();
+
+  let slots = allSlots.filter(s => {
+    if(!s.is_active) return false;
+    const sType = s.slot_type || 'basic';
+    return allowedTypes.includes(sType);
+  });
+
+  // لو ما فيه مواعيد من نوع الباقة المختارة، أعرض رسالة واضحة
+  if(slots.length === 0 && state.pkg) {
+    empty.style.display = 'block';
+    empty.innerHTML = `<div style="text-align:center;padding:20px"><div style="font-size:32px">🕐</div><p>لا توجد أوقات متاحة لهذه الباقة في هذا اليوم</p></div>`;
+    return;
+  }
+
+  if(slots.length === 0) {
+    empty.style.display = 'block';
+    empty.innerHTML = '<div style="text-align:center;padding:20px;"><div style="font-size:32px;">🕐</div><p>لا توجد أوقات متاحة لهذا اليوم</p></div>';
+    return;
+  }
+
+  const now = new Date();
+  slots.forEach(slot => {
+    const slotEl = document.createElement('div');
+    slotEl.className = 'slot-item';
+
+    const isFull = slot.booked >= slot.capacity;
+    const remaining = slot.capacity - slot.booked;
+    const slotDateTime = new Date(`${dateStr}T${slot.time}:00`);
+    const minMs = (sysSettings.min_booking_hours||2) * 60 * 60 * 1000;
+    const tooSoon = (slotDateTime - now) < minMs;
+    const isPastSlot = slotDateTime <= now || tooSoon;
+
+    if(isFull || isPastSlot) {
+      slotEl.classList.add('taken');
+    }
+
+    const unavailMsg = tooSoon && !isFull ? 'وقت قريب جداً' : 'غير متاح';
+    const sType = slot.slot_type || 'basic';
+    const typeColors = { basic:'#4f8ef7', gold:'#f5c842', silver:'#a8a9ad' };
+    const dur = slot.duration_minutes || 50;
+    slotEl.innerHTML = `
+      <div class="slot-time">${slot.label}</div>
+      <div class="slot-avail">${isFull||isPastSlot ? unavailMsg : remaining + ' متبقي'}</div>
+    `;
+
+    if(!isFull && !isPastSlot) {
+      slotEl.onclick = () => selectSlot(slot, dateStr, slotEl);
+    }
+
+    grid.appendChild(slotEl);
+  });
+
+  wrap.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function selectSlot(slot, dateStr, el) {
+  document.querySelectorAll('.slot-item').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected');
+  state.time = slot.time;
+  state.timeLabel = slot.label;
+  state.slotId = slot.id || null;
+  state.slotType = slot.slot_type || 'basic';
+
+  const dateObj = new Date(dateStr + 'T00:00:00');
+  const days = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const dateLabel = `${days[dateObj.getDay()]}، ${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
+
+  document.getElementById('ssVal').textContent = `${dateLabel} — ${slot.label}`;
+  document.getElementById('selectedSlotDisplay').style.display = 'flex';
+}
+
+// ══════════ INIT ══════════
+window.addEventListener('load', async () => {
+  // تحميل الإعدادات من Supabase أولاً (WA + أسعار + اسم الشركة)
+  await loadSettings();
+
+  // تهيئة التقويم
+  initCalendar();
+
+  // ربط البطاقات
+  document.getElementById('btnBook').addEventListener('click', startBooking);
+  document.getElementById('btnEdit').addEventListener('click', startEdit);
+  // امسح الجلسة عند التحديث
+  sessionStorage.removeItem('mghasil_page');
+});
+</script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(r => console.log('SW registered'))
+          .catch(e => console.log('SW failed:', e));
+      });
+    }
+
+    // زر "إضافة للشاشة الرئيسية" للأندرويد
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBtn = document.getElementById('install-btn');
+      if(installBtn) installBtn.style.display = 'flex';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      const installBtn = document.getElementById('install-btn');
+      if(installBtn) installBtn.style.display = 'none';
+      deferredPrompt = null;
+    });
+
+    function installApp() {
+      if(deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(r => {
+          deferredPrompt = null;
+        });
+      }
+    }
+  </script>
+</body>
+</html>
