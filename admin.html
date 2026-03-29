@@ -2587,7 +2587,7 @@ async function deleteSlot(id) {
 
 function openAddSlot(date='') {
   document.getElementById('fs-edit-id').value = '';
-  document.getElementById('slotModalTitle').textContent = '🕐 إضافة وقت جديد';
+  document.getElementById('slotModalTitle').textContent = '🕐 ' + t('slot.add_new');
   document.getElementById('fs-date').value = date || (activeSlotDay||new Date().toISOString().split('T')[0]);
   document.getElementById('fs-time').value = '';
   setTimePicker('fs-time', '09:00');
@@ -2601,7 +2601,7 @@ function openAddSlot(date='') {
 
 function openEditSlot(id, date, time, label, capacity, slot_type, duration) {
   document.getElementById('fs-edit-id').value = id;
-  document.getElementById('slotModalTitle').textContent = '✏️ تعديل الوقت';
+  document.getElementById('slotModalTitle').textContent = '✏️ ' + t('slot.edit');
   document.getElementById('fs-date').value = date;
   document.getElementById('fs-time').value = time;
   setTimePicker('fs-time', time);
@@ -4374,7 +4374,8 @@ function applyTranslations() {
       if(onclick.includes(`'${page}'`)) {
         const icon = el.querySelector('.ni')?.outerHTML || '';
         const badge = el.querySelector('.nav-badge')?.outerHTML || '';
-        el.innerHTML = icon + ' ' + t(key) + badge;
+        const notifWraps = Array.from(el.querySelectorAll('.nav-notif-wrap')).map(n=>n.outerHTML).join('');
+        el.innerHTML = icon + ' ' + t(key) + badge + notifWraps;
         break;
       }
     }
@@ -4465,6 +4466,7 @@ function applyTranslations() {
   const cri = document.getElementById('custReportSearch'); if(cri) cri.placeholder = t('rep.cust_search_ph');
   if(reportTab==='financial') renderFinancialReport();
   else if(reportTab==='workers') renderWorkersReport();
+  else if(reportTab==='payments') renderPaymentReport();
   else filterReport();
 
   // ══ 10. Settings + re-render ══
@@ -4474,6 +4476,8 @@ function applyTranslations() {
   renderDashboard();
   renderLogs();
   renderWorkersGrid();
+  // إعادة رسم السلوتات إذا كانت الصفحة نشطة
+  if(document.getElementById('page-slots')?.classList.contains('active') && typeof renderSlotWeek === 'function') renderSlotWeek();
 }
 
 function hideLoadingIndicator() {
