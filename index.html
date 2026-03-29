@@ -1052,10 +1052,8 @@ function selectPkg(pkg, el) {
   state.timeLabel = '';
   state.slotId = null;
   state.slotType = pkg;
-  if(selectedCalDate) {
-    selectedCalDate = null;
-    renderCalendar();
-  }
+  selectedCalDate = null;
+  renderCalendar();
 }
 
 function selectSize(size, el) {
