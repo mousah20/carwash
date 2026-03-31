@@ -3793,7 +3793,7 @@ function showPage(name, el) {
       const te=document.getElementById('repTab-'+t);
       if(te) te.style.display = t==='financial'?'':'none';
     });
-    renderFinancialReport();
+    setTimeout(renderFinancialReport, 0);
   }
   if(name==='slots') renderSlotWeek();
   if(name==='settings') { loadWorkerEmails(); loadLogs(); renderUsersList(); loadPackageSettings(); loadCoupons(); loadRatings(); loadWaSettings(); loadWaTemplates(); }
