@@ -3003,6 +3003,11 @@ function renderReports() {
 }
 
 function renderFinancialReport() {
+  ['revenueChart','servicesChart','weekdayChart','statusChart'].forEach(id=>{
+    const c=document.getElementById(id); if(!c) return;
+    const w=c.parentElement?.offsetWidth||0, h=c.parentElement?.offsetHeight||200;
+    if(w>0){c.width=w;c.height=h;}
+  });
   const filtered = getFilteredAppts();
   const valid = filtered.filter(a=>a.status!=='cancelled');
   // KPIs
@@ -3797,7 +3802,7 @@ function showPage(name, el) {
       const te=document.getElementById('repTab-'+t);
       if(te) te.style.display = t==='financial'?'':'none';
     });
-    setTimeout(renderFinancialReport, 50);
+    setTimeout(renderFinancialReport, 320);
   }
   if(name==='slots') renderSlotWeek();
   if(name==='settings') { loadWorkerEmails(); loadLogs(); renderUsersList(); loadPackageSettings(); loadCoupons(); loadRatings(); loadWaSettings(); loadWaTemplates(); }
