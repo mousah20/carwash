@@ -2987,9 +2987,13 @@ function getFilteredAppts() {
 }
 
 function renderReports() {
-  if(reportTab==='financial') renderFinancialReport();
-  else if(reportTab==='workers') renderWorkersReport();
-  else if(reportTab==='bookings') filterReport();
+  // فقط رسم الـ charts إذا صفحة التقارير ظاهرة
+  const pageActive = document.getElementById('page-reports')?.classList.contains('active');
+  if(pageActive) {
+    if(reportTab==='financial') renderFinancialReport();
+    else if(reportTab==='workers') renderWorkersReport();
+    else if(reportTab==='bookings') filterReport();
+  }
 
   // تحديث فلاتر العمال
   const wSel = document.getElementById('reportWorkerFilter');
@@ -3793,7 +3797,7 @@ function showPage(name, el) {
       const te=document.getElementById('repTab-'+t);
       if(te) te.style.display = t==='financial'?'':'none';
     });
-    setTimeout(renderFinancialReport, 0);
+    setTimeout(renderFinancialReport, 50);
   }
   if(name==='slots') renderSlotWeek();
   if(name==='settings') { loadWorkerEmails(); loadLogs(); renderUsersList(); loadPackageSettings(); loadCoupons(); loadRatings(); loadWaSettings(); loadWaTemplates(); }
